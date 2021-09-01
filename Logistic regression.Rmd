@@ -1,0 +1,651 @@
+---
+title: "CIA-2"
+author: "venkata sai krishna Nivarthi"
+date: "12/08/2021"
+output: html_document
+---
+
+#Problem statement-An automobile industry which manufactures and sells vehicles, after few years, the company seemes that many of the customers are not extending their insurance.The purpose of this project is to determine the response of the customer whether they would accept or reject the offer we make based on the customer profile. The profile of the customer is built upon based on details such as Employment status, Marital status, Income group, etc.The aim of this analysis to get know whether our insurance customers will extend their vehicle insurance based on their behaviour or not.
+
+#Objectives
+#1.	To get to know whether our insurance customers will extend their vehicle insurance based on their behaviour 
+#2.	To know which independent variables show relationship among the response variable (dependent variable).
+#3.	To know how much the independent variable contributing to the response variable(dependent variable) 
+#4.	To know whether the model is good to implement or not.
+#5.	To find which variables are significant with respect to dependent variable with regards to step-AIC function.
+
+
+
+#Importing the dataset and storing it as data1 and viewing the dataset
+```{r}
+
+data1<-read.csv("C:\\Users\\LOKSAI\\Downloads\\Customer_Purchase-Marketing-Analysis.csv", stringsAsFactor= TRUE)
+
+head(data1)
+
+```
+#Customer id and Effective To Date is not important for performing this logistic regression, so I will drop them. The data is inbalanced regarding the outcome so dropping it.
+
+```{r}
+
+data1 = subset(data1, select = -c(Customer,Effective.To.Date))
+str(data1)
+
+
+```
+#Data Exploration
+```{r}
+
+sapply(data1, class)
+
+```
+#Understanding the dataset with the structure and dimensions
+```{r}
+library(dplyr)
+summary(data1)
+
+glimpse(data1)
+
+
+```
+
+#sapply() function to count the number of observations with each feature that contains.
+#Checking the null values of each variable
+```{r}
+
+sapply(data1, function(x) sum(is.na(x)))
+
+```
+#There are no null values with regards with each variable
+
+
+#Similarly, the number of unique observations per column is revealed below.
+#This gives length of unique observations for each column variable
+```{r}
+
+sapply(data1, function(x) length(unique(x)))
+
+```
+
+#Using the missmap() function under the Amelia package, the visualization of the amount of missing and observed values per features is observed below. 
+#This shows the missing and observed values in the form of visualization
+```{r}
+
+library(Amelia)
+missmap(data1, main = "Missing Values vs. Observed")
+
+```
+#There are no null values
+
+#Each customer owns a car and you as entrepreneur offers 4 different car insurances to them. The target of this dataset is the Response.The response can be "Yes" - the customer accept the offer and "No" - the customer didn?t accept the offer.
+#Using Graphs to understand our Data
+# Relation between numerical variables
+
+```{r}
+
+nums = unlist(lapply(data1, is.numeric)) 
+insurance_numeric=data1[,nums]
+corr=cor(insurance_numeric)
+
+library(ggcorrplot)
+ggcorrplot(corr, hc.order = TRUE, type = "lower",lab = TRUE)
+
+```
+#1) this shows the correlation between the variables, this is done to understand about the varaibles relationship
+#2) the red colour indicates positive correlation, if one variable incrases, the other variable increases and vice versa, so if we increase total claim amount, the monthly premium will increase.
+#3) The blue colour iindicates that there is negative correlation, if ne variables increases, the other decreases and vice versa. In this case, income increase, the total claim amount decreases or vice versa.
+#4) the white colour represents there is no corrleation between the variables.
+
+
+## Exploratory Data Analysis
+##Relation between categorial variables and response variable Gender - > Response
+```{r}
+library(ggplot2)
+
+ggplot(data1, aes(Response, fill= Gender))+geom_bar(position='dodge')
+
+```
+#As we can see that our independent variable is not balance, we have people will no continue to use vehicle insurance about 5479 and people will not use vehicle insurance about 916. This can be our consideration to analysis this data with resampling or feature engineering to improve our model
+#No reponses are more from both male and female.
+
+
+##Relationship between Response and State
+```{r}
+ggplot(data1, aes(State, fill= Response))+geom_bar(position='dodge')
+
+```
+#The no responses are more from california when compared to all states, its nearly 3000.  An the least no are from washington.
+#The Yes response are also more from california, this means there are more population from california
+
+
+
+##Relationship between Response and Coverage
+```{r}
+
+ggplot(data1, aes(Coverage, fill= Response))+geom_bar(position='dodge')
+
+```
+#Basic coverage people are not intrested in extending their insurance compared to extended and premium.
+#the highest to lowest range follows in this order- basic, extended, premium.
+
+
+
+###Relationship between Response and Education
+```{r}
+
+ggplot(data1, aes(Education, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#College going and bachelor are intrested in extending the insurance premium and also they are the most who has responded no for this data.
+
+
+##Relationship between Response and Location code
+```{r}
+
+ggplot(data1, aes(Location.Code, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#The sururban people are not intrested in extension of the insurance and they have the more votes.
+#the urban and rural are very less, who agreed to extend.
+
+
+##Relationship between Response and marital status
+```{r}
+
+ggplot(data1, aes(Marital.Status, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#Married people are more intrestd in extending the insurance when compared to divorced and single.
+
+
+##Relationship between Response and Months since last claim
+```{r}
+
+ggplot(data1, aes(Months.Since.Last.Claim, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#The responses for months since last claim are no are more when compared to yes.
+
+
+##Relationship between Response and Number.of.Open.Complaints
+```{r}
+
+
+ggplot(data1, aes(Number.of.Open.Complaints, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#No complaited people are inttrested in extending their insurance premium.
+
+
+
+##Relationship between Response and No of policies
+```{r}
+
+ggplot(data1, aes(Number.of.Policies, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#The 0 policy people are more intrested in extending the insurance premium.
+
+
+##Relationship between Response and Policy type
+```{r}
+
+ggplot(data1, aes(Policy.Type, fill= Response))+geom_bar(position='dodge')
+
+```
+#Personal auto type of people have responded yes to extend their plan for the insurance premium when compared to corporate auto and special auto.
+
+
+##Relationship between Response and renew offer type
+```{r}
+
+ggplot(data1, aes(Renew.Offer.Type, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#Offer 4 people are not at all intrested in extending the insurance premium.
+#Offer 2 people are intrested most to extend their insurance premium and then offer 1 people.
+
+
+##Relationship between Response and sales channel
+```{r}
+
+ggplot(data1, aes(Sales.Channel, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#The people who approached through agent are intrested in extending their insurance premium, this says that, agents are working more and grabbing more customers.
+#The order of extending the isurance premium is agaent, branch, call center, web of sales channel.
+
+
+##Relationship between Response and vehicle class
+```{r}
+
+ggplot(data1, aes(Vehicle.Class, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#Four door car, two door car, suv car holders are intrested in extending their insurance premium, this says people with big cars are intrested in extedning their insuranc epremium.
+#Luxury car and luxury suv are least interested.
+
+
+##Relationship between Response and Vehicle size
+```{r}
+
+ggplot(data1, aes(Vehicle.Size, fill= Response))+geom_bar(position='dodge')
+
+
+```
+#Mid-size vehicle owners are intrested in extending their insurance premium rather than small and large size vehicles.
+
+
+
+#Splitting the dataset into train and test
+```{r}
+#dividing the data
+library(caTools)
+set.seed(100) #we use this for same sampling(random sampling)
+split1=sample.split(data1$Response, SplitRatio = 0.70)
+summary(split1) #false is test and true is train dataset
+datatest=subset(data1,split1==FALSE)  #false means it will create the test data
+datatrain=subset(data1, split1== TRUE)  #true means it will create the train data
+dim(datatest)  #dimensions of datatest
+dim(datatrain)  #dimensions of the datatrain
+
+```
+#Logistic Regression
+#Logistic regression is about having categorical dependent variable and independent variable consists of combination of both categorical and scale variable.
+```{r}
+library(caret)
+library(Rcpp)
+reg1<-train(Response~.,
+            method ="glm",
+            family = "binomial",
+            data=datatrain)
+
+summary(reg1)
+
+```
+#There are different variables in this regression model where dependent variable is response with yes and no. There are many independent variables consists of 	State,	Customer Lifetime Value,Coverage,	Education,EmploymentStatus,	Gender,	Income,	Location Code,	Marital Status,	Monthly Premium Auto,	Months Since Last Claim,	Months Since Policy, Inception	Number of Open Complaints,	Number of Policies,	Policy Type	,Policy	,Renew Offer Type,	Sales Channel	,Total Claim Amount	Vehicle Class,	Vehicle Size.
+
+# From the output we can see that there is a  difference between Null deviance and Residual deviance indicating the model is good model
+
+# Explanation of the parameters
+#The significant independent variables from this regression are Education,EmploymentStatus, Location Code,	Marital Status, Renew Offer Type,	Sales Channel	,Total Claim Amount and vehicle size.
+#Deviance is a measure of goodness of fit of a model. Higher numbers always indicates bad fit.
+#The null deviance is 5253.8 it shows how well the response is predicted by the model with nothing but an intercept withrespect to the independent variables.
+#The residual deviance is 4053.3 it shows how well the response is predicted by the model when the predictors are included.
+#	The Akaike information criterion (AIC)  will explain the model complexity and preferably lower value will indicates a better fit model. So,4151.3 of AIC and is lower value indicating the model is good fit
+#As there are very little significant values, we need to run few other models to check whether it is good fit or not.
+
+#Checking the final model of the logistic regression
+```{r}
+reg1$finalModel
+
+```
+#The significant independent variables from this regression are Education,EmploymentStatus, Location Code,	Marital Status, Renew Offer Type,	Sales Channel	,Total Claim Amount and vehicle size.
+#Deviance is a measure of goodness of fit of a model. Higher numbers always indicates bad fit.
+#The null deviance is 5253.8 it shows how well the response is predicted by the model with nothing but an intercept withrespect to the independent variables.
+#The residual deviance is 4053.3 it shows how well the response is predicted by the model when the predictors are included.
+#	The Akaike information criterion (AIC)  will explain the model complexity and preferably lower value will indicates a better fit model. So,4151.3 of AIC and is lower value indicating the model is good fit
+
+
+#we need to check whether the model is fit or not
+```{r}
+
+library(blorr)
+library(Rcpp)
+
+
+blr_model_fit_stats(reg1$finalModel)
+
+```
+#From the previous test we can say that the model is good fit, but the r2 values here are very less, likely hood ratio is also good, so we can say that the model is good in terms of likelyhood ratio.
+#The different R2 values in the model fit statistics are low but we cannit decide on this model, so we need to do the hosmer lemeshow to know whether the model is good or not.
+#The Akaike information criterion (AIC) and Bayesian information criterion (BIC) will explain the model complexity and preferably lower value will indicates a better fit model. So, 4151.3 of AIC and 4482,724 of BIC are lower values indicating the model is  good fit
+
+
+
+#hosmer lemeshow
+#null hypothesis for hosmer lemeshow- model is good fit
+#alternate- not good fit model
+```{r}
+
+blr_test_hosmer_lemeshow(reg1$finalModel)
+
+```
+#The model says the pvalue is less than 0.05, we reject the null hypothesis and accept the alternate hypothesis. saying the model is not good fit, according to hosmer lemeshow
+
+#confusion matrix
+```{r}
+
+blr_confusion_matrix(reg1$finalModel,cutoff = 0.5)
+
+
+```
+#The accuracy is 87percent , this says the model is right classication.
+#The kappa value is 0.23, sensitivity is 0.17, specificity is 0.98 and precision is 0.68
+
+
+#Here we are determining the confusion matrix to know accuracy, specificity and sensitivity.
+```{r}
+predict1<-predict(reg1, datatest)
+
+confusionMatrix(predict1, datatest$Response)
+
+```
+#A confusion matrix is a technique for summarizing the performance of a classification algorithm. Classification accuracy alone can be misleading if you have an unequal number of observations in each class or if you have more than two classes in your dataset.
+#From this we can say that the accuracy is 87percent and kappa value is 23percent, saying the model is good.
+
+#The confusion matrix says that right classification of model is 87% said by accuracy i.e., people who are predicted saying no and people who are actually said no are 2321 and eople who actually said yes and actual is also yes is 68.
+
+#The people who said they are not intrested to take insurance and we predicted that they dont want any insurance is 2321 and the sensitivity is 98percent, which means we predited it right.
+
+#The people who said they will extend their insuranc epolicy and we predicted that people will take the insurance policy are 68 but the specificity is low
+
+
+# Building an ROC curve for the dependent variable (classification)
+# Here the ROC Curve specifies the model fit indices
+
+```{r}
+gaintable = blr_gains_table(reg1$finalModel)
+blr_roc_curve(gaintable)
+
+```
+# From the below graph output we can say that the independent variables has effect in dependent variable and the model if good fit model
+
+
+# Below we will perform Step wise AIC in bith directions (that is forward direction and backward direction)
+```{r}
+regboth=blr_step_aic_both(reg1$finalModel, details= TRUE)
+summary(regboth$model)
+
+plot(regboth)
+
+```
+# from the output we are rounding off to only 9 varibales those are, EmploymentStatus, Renew.Offer.Type, Location.Cod,Vehicle.Size, Education, Sales.Channel, Total.Claim.Amount, Monthly.Premium.Auto, Marital.Status, Vehicle.Class that has effect on dependent variable classification
+
+
+
+#2nd regression model with significant variables 
+```{r}
+
+reg2<-train(Response~EmploymentStatus+
+              Renew.Offer.Type+
+              Location.Code+
+              Vehicle.Size+
+              Education+
+              Sales.Channel+
+              Total.Claim.Amount+
+              Monthly.Premium.Auto+
+              Marital.Status,
+             method ="glm",
+             family = "binomial",
+             data=datatrain)
+
+summary(reg2)
+```
+#There are different variables in this regression model where dependent variable is response with yes and no. There are many independent variables consists of 	 EmploymentStatus, Renew.Offer.Type, Location.Cod,Vehicle.Size, Education, Sales.Channel, Total.Claim.Amount, Monthly.Premium.Auto, Marital.Status.
+
+# From the output we can see that there is a  difference between Null deviance and Residual deviance indicating the model is good model
+
+# Explanation of the parameters
+#The significant independent variables from this regression are EmploymentStatus, Renew.Offer.Type, Location.Cod,Vehicle.Size, Education, Sales.Channel, Total.Claim.Amount, Monthly.Premium.Auto, Marital.Status.
+#Deviance is a measure of goodness of fit of a model. Higher numbers always indicates bad fit.
+#The null deviance is 5253.8 it shows how well the response is predicted by the model with nothing but an intercept withrespect to the independent variables.
+#The residual deviance is 4088.3 it shows how well the response is predicted by the model when the predictors are included.
+#	The Akaike information criterion (AIC)  will explain the model complexity and preferably lower value will indicates a better fit model. So,4134.5 of AIC and is lower value indicating the model is good fit
+#As there are very little significant values, we need to run few other models to check whether it is good fit or not.
+
+#Explanation of coefficients
+
+#EmploymentStatusRetired- This have an negative sign that means there is inverse relationship with the response variable. 
+#EmploymentStatusUnemployed-This have an negative sign that means there is inverse relationship with the response variable.
+#Renew.Offer.TypeOffer2-This have an negative sign that means there is inverse relationship with the response variable.
+#Renew.Offer.TypeOffer3-This have an negative sign that means there is inverse relationship with the response variable.
+#Location.CodeSuburban-This have an negative sign that means there is inverse relationship with the response variable.
+#Vehicle.SizeSmall-This have an negative sign that means there is inverse relationship with the response variable.
+#EducationDoctor- This have an positive sign that means there is direct relationship with the response variable.
+#EducationMaster-This have an positive sign that means there is direct relationship with the response variable.
+#Sales.ChannelBranch- This have an negative sign that means there is inverse relationship with the response variable.         
+#Sales.ChannelCall Center`- This have an negative sign that means there is inverse relationship with the response variable.    
+#Sales.ChannelWeb-This have an negative sign that means there is inverse relationship with the response variable.               
+#Total.Claim.Amount-This have an negative sign that means there is inverse relationship with the response variable.              
+#Monthly.Premium.Auto- This have an positive sign that means there is direct relationship with the response variable.           
+#Marital.StatusMarried- This have an negative sign that means there is inverse relationship with the response variable.          
+#Marital.StatusSingle- This have an negative sign that means there is inverse relationship with the response variable.
+
+
+
+
+
+#Checking the final model of the logistic regression
+```{r}
+reg2$finalModel
+
+```
+##The null deviance is 5254 it shows how well the response is predicted by the model with nothing but an intercept withrespect to the independent variables.
+#The residual deviance is 4088 it shows how well the response is predicted by the model when the predictors are included.
+#	The Akaike information criterion (AIC)  will explain the model complexity and preferably lower value will indicates a better fit model. So,4134 of AIC and is lower value indicating the model is good fit
+#As there are very little significant values, we need to run few other models to check whether it is good fit or not.
+
+
+#we need to check whether the model is fit or not
+```{r}
+#we need to check model fit
+
+library(blorr)
+library(Rcpp)
+
+
+blr_model_fit_stats(reg2$finalModel)
+
+```
+#From the previous test we can say that the model is good fit, but the r2 values here are very less, likely hood ratio is also good, so we can say that the model is good in terms of likelyhood ratio.
+#The different R2 values in the model fit statistics are low but we cannit decide on this model, so we need to do the hosmer lemeshow to know whether the model is good or not.
+#The Akaike information criterion (AIC) and Bayesian information criterion (BIC) will explain the model complexity and preferably lower value will indicates a better fit model. So, 4134.460 of AIC and 4290.012 of BIC are lower values indicating the model is  good fit
+
+```{r}
+#null hypothesis for hosmer lemeshow- model is good fit
+#alternate- model is not good fit
+blr_test_hosmer_lemeshow(reg2$finalModel)
+
+```
+#Here the p value is less than 0.05, we reject the null hypothesis saying the model is not good fit according to hosmer lemeshow
+
+
+#confusion matrix
+```{r}
+
+blr_confusion_matrix(reg2$finalModel,cutoff = 0.5)
+
+
+```
+#The accuracy is 87percent , this says the model is right classication.
+#The kappa value is 0.23, sensitivity is 0.17, specificity is 0.98 and precision is 0.69
+
+
+#Here we are determining the confusion matrix to know accuracy, specificity and sensitivity.
+```{r}
+predict2<-predict(reg2, datatest)
+
+confusionMatrix(predict2, datatest$Response)
+
+```
+#From this we can say that the accuracy is 87percent and kappa value is 23percent, saying the model is good.
+
+
+# Building an ROC curve for the dependent variable (classification)
+# Here the ROC Curve specifies the model fit indices
+
+```{r}
+gaintable = blr_gains_table(reg2$finalModel)
+blr_roc_curve(gaintable)
+
+```
+# From the below graph output we can say that the independent variables has effect in dependent variable and the model if good fit model
+
+
+# Below we will perform Step wise AIC in bith directions (that is forward direction and backward direction)
+```{r}
+regboth=blr_step_aic_both(reg2$finalModel, details= TRUE)
+summary(regboth$model)
+
+plot(regboth)
+
+```
+# from the output we are rounding off to only 9 varibales those are, EmploymentStatus, Renew.Offer.Type, Location.Code,Vehicle.Size, Education, Sales.Channel, Total.Claim.Amount, Monthly.Premium.Auto, Marital.Status, Vehicle.Class that has effect on dependent variable response
+
+#Other model
+#Ridge and lasso
+```{r}
+library(caret)
+library(glmnet)
+library(mlbench)
+library(psych)
+library(ggplot2)
+
+View(data1)
+```
+
+
+
+#Here the x and y need to be in matrix form
+#The y is dependent variables, to run ridge and lasso regression, we need to convert that yes and no variables into true and false
+```{r}
+
+x=model.matrix(Response~EmploymentStatus+
+              Renew.Offer.Type+
+              Location.Code+
+              Vehicle.Size+
+              Education+
+              Sales.Channel+
+              Total.Claim.Amount+
+              Monthly.Premium.Auto+
+              Marital.Status, datatrain)
+
+y=ifelse(datatrain$Response == "Yes", TRUE, FALSE)
+
+```
+
+#Running the code to find whether there is over fitting or underfitting
+```{r}
+
+fit_ridge=glmnet(x,y,alpha = 0 ,family = "binomial")
+fit_ridge
+plot(fit_ridge)
+fit_ridge$lambda[1]
+#if the value is high then it is overfitting
+
+```
+#From the graph we can say that there is overfitting of the variables.
+
+#checking the best model using besttune
+```{r}
+
+bestmodel<-reg2$finalModel
+coef(bestmodel, s=reg2$bestTune$lambda)
+
+
+```
+#These are the significnat values which are affeting the dependent variable
+#These are the coefficients of the independent variables with respect to the dependent variable for the best fit model
+
+
+#Checking the fit of lasso model
+```{r}
+#lasso
+fit_lasso=glmnet(x,y,alpha = 1)
+fit_lasso
+plot(fit_lasso)
+
+```
+
+
+#Conclusion
+# Here we have performed Logistic regression for classifying/predicting the customer will accept or reject the offer for buying the insurance claim.
+# Here we have analysed with sensitvity, specificity and AIC values which has shown that the model is good fit model when we have performed logistic regression between Classsification dependent variable and all other independent variables
+# For checking the actual effect of independent variables on dependent varaibel we have performed 2 regression models.
+# For doing the above test we have divided the data as 50% by using Receiver Operating Characteristic (ROC) curve.
+# After performing these tests we found out that dependent variable is effected mostly by 9 independent varibles those areEmploymentStatus, Renew.Offer.Type, Location.Cod,Vehicle.Size, Education, Sales.Channel, Total.Claim.Amount, Monthly.Premium.Auto, Marital.Status, Vehicle.Class that has effect on dependent variable classification
+# We have checked the effect of these 9 variables on dependent variable by doing step AIC and found out the model build by using these 9 variables is good model and has perfect effect on dependent variable
+#The confusion matrix says that right classification of model is 87% said by accuracy i.e., people who are predicted saying no and people who are actually said no are 2321 and eople who actually said yes and actual is also yes is 68.
+#The people who said they are not intrested to take insurance and we predicted that they dont want any insurance is 2321 and the sensitivity is 98percent, which means we predited it right.
+#The people who said they will extend their insuranc epolicy and we predicted that people will take the insurance policy are 68 but the specificity is low
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
